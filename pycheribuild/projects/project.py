@@ -434,6 +434,10 @@ class Project(SimpleProject):
         return self._xtarget is None or not self._xtarget.is_cheri_purecap()
 
     @classproperty
+    def can_build_with_csa(self) -> bool:
+        return False
+
+    @classproperty
     def can_build_with_ccache(self) -> bool:
         return False
 
@@ -555,6 +559,11 @@ class Project(SimpleProject):
                                                help="Build with AddressSanitizer enabled")
         else:
             cls.use_asan = False
+        if cls.can_build_with_csa:
+            cls.use_csa = cls.add_bool_option("use-csa", default=False,
+                                              help="Build and analyse with Clang Static Analyzer")
+        else:
+            cls.use_csa = False
         if cls.can_build_with_ccache:
             cls.use_ccache = cls.add_bool_option("use-ccache", default=False,
                                                  help="Build with CCache")
