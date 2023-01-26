@@ -50,6 +50,10 @@ class BuildCompilerRt(CrossCompileCMakeProject):
         CompilationTargets.ALL_SUPPORTED_BAREMETAL_TARGETS + \
         CompilationTargets.ALL_SUPPORTED_RTEMS_TARGETS
 
+    @classmethod
+    def can_build_with_csa(cls) -> bool:
+        return True
+
     def setup(self):
         # For the NATIVE variant we want to install to the compiler resource dir:
         if self.compiling_for_host():

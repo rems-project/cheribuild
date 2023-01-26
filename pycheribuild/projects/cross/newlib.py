@@ -61,6 +61,10 @@ class BuildNewlib(CrossCompileAutotoolsProject):
     # build_in_source_dir = True  # we have to build in the source directory
 
     @classmethod
+    def can_build_with_csa(cls) -> bool:
+        return True
+
+    @classmethod
     def setup_config_options(cls, **kwargs):
         super().setup_config_options(**kwargs)
         cls.locale_support = cls.add_bool_option("locale-support", show_help=False, help="Build with locale support")
@@ -107,8 +111,8 @@ class BuildNewlib(CrossCompileAutotoolsProject):
         bindir = self.sdk_bindir
         self.add_configure_vars(
             AS_FOR_TARGET=str(self.CC),  # + target_cflags,
-            CC_FOR_TARGET=str(self.CC),  # + target_cflags,
-            CXX_FOR_TARGET=str(self.CXX),  # + target_cflags,
+            CC_FOR_TARGET=str(self.cc_wrapper),  # + target_cflags,
+            CXX_FOR_TARGET=str(self.cxx_wrapper),  # + target_cflags,
             AR_FOR_TARGET=self.target_info.ar, STRIP_FOR_TARGET=self.target_info.strip_tool,
             OBJCOPY_FOR_TARGET=bindir / "objcopy", RANLIB_FOR_TARGET=self.target_info.ranlib,
             OBJDUMP_FOR_TARGET=bindir / "llvm-objdump",
