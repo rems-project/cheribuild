@@ -1064,7 +1064,8 @@ class Project(SimpleProject):
                            "--keep-cc",
                            "--use-cc", commandline_to_str([self.CC]),
                            "--use-c++", commandline_to_str([self.CXX]),
-                           "-enable-checker", "alpha.cheri.ProvenanceSourceChecker"
+                           "-enable-checker", "alpha.cheri.ProvenanceSourceChecker",
+                           "-enable-checker", "alpha.cheri.CapabilityCopyChecker",
                            ]
         return scan_build_args
 
