@@ -97,6 +97,10 @@ class _ClangBasedTargetInfo(TargetInfo, metaclass=ABCMeta):
             return self.sysroot_dir
         return super().default_install_dir(install_dir)
 
+    @classmethod
+    def _get_csa_project(cls) -> "typing.Type[BuildLLVMMonoRepoBase]":
+        raise NotImplementedError()
+
     @property
     def c_compiler(self) -> Path:
         return self._compiler_dir / "clang"
@@ -131,15 +135,15 @@ class _ClangBasedTargetInfo(TargetInfo, metaclass=ABCMeta):
 
     @property
     def ccc_analyzer(self) -> Path:
-        return self.sdk_root_dir / "libexec/ccc-analyzer"
+        return self._get_csa_project().get_native_install_path(self.config) / "libexec/ccc-analyzer"
 
     @property
     def cxx_analyzer(self) -> Path:
-        return self.sdk_root_dir / "libexec/c++-analyzer"
+        return self._get_csa_project().get_native_install_path(self.config) / "libexec/c++-analyzer"
 
     @property
     def scan_build(self) -> Path:
-        return self._compiler_dir / "scan-build"
+        return self._get_csa_project().get_native_install_path(self.config) / "bin/scan-build"
 
     @classmethod
     @abstractmethod
@@ -559,6 +563,11 @@ class CheriBSDTargetInfo(FreeBSDTargetInfo):
         return LaunchCheriBSD
 
     @classmethod
+    def _get_csa_project(cls) -> "typing.Type[BuildLLVMMonoRepoBase]":
+        from ..projects.cross.llvm import BuildCheriLLVMWithCSA
+        return BuildCheriLLVMWithCSA
+
+    @classmethod
     def is_cheribsd(cls) -> bool:
         return True
 
@@ -674,6 +683,11 @@ class CheriBSDMorelloTargetInfo(CheriBSDTargetInfo):
                 # Use emulated TLS on older purecap
                 result.append("-femulated-tls")
         return result
+
+    @classmethod
+    def _get_csa_project(cls) -> "typing.Type[BuildLLVMMonoRepoBase]":
+        from ..projects.cross.llvm import BuildMorelloLLVMWithCSA
+        return BuildMorelloLLVMWithCSA
 
 
 # FIXME: This is completely wrong since cherios is not cheribsd, but should work for now:
