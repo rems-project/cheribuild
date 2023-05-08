@@ -58,6 +58,7 @@ class BuildLLVMBase(CMakeProject):
     is_large_source_repository = True
     # Linking all the debug info takes forever
     default_build_type = BuildType.RELEASE
+    standalone_project_build = False
 
     included_projects: "ClassVar[list[str]]"
     add_default_sysroot: "ClassVar[bool]"
@@ -103,7 +104,8 @@ class BuildLLVMBase(CMakeProject):
             "use-llvm-modules-build", default=False,
             help="Use the LLVM modules build (may be faster in some cases but probably won't allow debugging)")
         cls.dylib = cls.add_bool_option("dylib", default=False, help="Build dynamic-link LLVM")
-        cls.install_toolchain_only = cls.add_bool_option("install-toolchain-only", default=False,
+        if "install_toolchain_only" not in cls.__dict__:
+            cls.install_toolchain_only = cls.add_bool_option("install-toolchain-only", default=False,
                                                          help="Install only toolchain binaries (i.e. no test tools)")
         cls.build_minimal_toolchain = cls.add_bool_option("build-minimal-toolchain", default=False,
                                                           help="Only build the binaries required for a minimal "
@@ -163,7 +165,7 @@ class BuildLLVMBase(CMakeProject):
             self.add_cmake_options(LLVM_ENABLE_MODULES=True,
                                    LLVM_ENABLE_MODULE_DEBUGGING=self.should_include_debug_info)
 
-        if not self.build_everything:
+        if not self.build_everything and not self.standalone_project_build:
             self.add_cmake_options(
                 LLVM_ENABLE_OCAMLDOC=False,
                 LLVM_ENABLE_BINDINGS=False,
@@ -193,7 +195,7 @@ class BuildLLVMBase(CMakeProject):
                                    CLANG_ENABLE_ARCMT=False,  # also need to disable ARCMT to disable static analyzer
                                    LLVM_ENABLE_Z3_SOLVER=False,  # and this also needs to be set
                                    )
-        if self.skip_misc_llvm_tools:
+        if self.skip_misc_llvm_tools and not self.standalone_project_build:
             self.add_cmake_options(LLVM_TOOL_LLVM_MCA_BUILD=False,
                                    LLVM_TOOL_LLVM_EXEGESIS_BUILD=False,
                                    LLVM_TOOL_LLVM_RC_BUILD=False,
@@ -406,12 +408,13 @@ class BuildLLVMMonoRepoBase(BuildLLVMBase):
 
     def setup(self):
         super().setup()
-        self.add_cmake_options(LLVM_ENABLE_PROJECTS=";".join(self.included_projects))
+        if self.included_projects:
+            self.add_cmake_options(LLVM_ENABLE_PROJECTS=";".join(self.included_projects))
 
     def configure(self, **kwargs):
         if (self.source_dir / "tools/clang/.git").exists():
             self.fatal("Attempting to build LLVM Monorepo but the checkout is from the split repos!")
-        if not self.included_projects:
+        if not self.included_projects and not self.standalone_project_build:
             self.fatal("Need at least one project in --include-projects config option")
         super().configure(**kwargs)
 
@@ -694,10 +697,29 @@ class BuildMorelloLLVMWithCSA(BuildMorelloLLVM):
         function=lambda config, project: config.output_root / "morello-csa",
         as_string="$INSTALL_ROOT/morello-csa")
 
-    skip_misc_llvm_tools = True
-    included_projects = ["clang"]
+    dependencies = ["morello-llvm-native"]
+    dependencies_must_be_built = True
+    skip_toolchain_dependencies = True
+
+    standalone_project_build = True
+    root_cmakelists_subdirectory = Path("clang")
+
+    included_projects = []
+    install_toolchain_only = True
     skip_static_analyzer = False
     hide_options_from_help = True
+
+    def configure(self, **kwargs):
+        # standalone clang build
+        self.add_cmake_options(LLVM_ROOT=BuildMorelloLLVM.get_install_dir(self),
+                               LLVM_SOURCE_DIR=self.get_source_dir(self) / "llvm",
+                               LLVM_EXTERNAL_LIT=self.get_source_dir(self) / "llvm" / "utils" / "lit" / "lit.py",
+                               CLANG_INCLUDE_TESTS=True,)
+        # enable CSA
+        self.add_cmake_options(CLANG_ENABLE_STATIC_ANALYZER=True)
+        # explicitly set to skip unsupported tests
+        self.add_cmake_options(LLVM_ENABLE_NEW_PASS_MANAGER=True)
+        super().configure(**kwargs)
 
     @classmethod
     def get_native_install_path(cls, config: CheriConfig):
