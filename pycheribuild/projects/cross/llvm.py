@@ -666,7 +666,7 @@ class BuildLLVMSplitRepoBase(BuildLLVMBase):
                                                        revision=self.lldb_revision),
 
 
-class BuildCheriLLVMWithCSA(BuildMorelloLLVM):
+class BuildCheriLLVMWithCSA(BuildCheriLLVM):
     repository = GitRepository("https://github.com/rems-project/llvm-project.git", force_branch=True,
                                default_branch="cheri-csa")
     default_directory_basename = "cheri-csa"
