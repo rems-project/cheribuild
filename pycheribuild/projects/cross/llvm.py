@@ -678,10 +678,27 @@ class BuildCheriLLVMWithCSA(BuildCheriLLVM):
         function=lambda config, project: config.output_root / "cheri-csa",
         as_string="$INSTALL_ROOT/cheri-csa")
 
-    skip_misc_llvm_tools = True
-    included_projects = ["clang"]
+    dependencies = ["llvm-native"]
+    dependencies_must_be_built = True
+    skip_toolchain_dependencies = True
+
+    standalone_project_build = True
+    root_cmakelists_subdirectory = Path("clang")
+
+    included_projects = []
+    install_toolchain_only = True
     skip_static_analyzer = False
     hide_options_from_help = True
+
+    def configure(self, **kwargs):
+        # standalone clang build
+        self.add_cmake_options(LLVM_ROOT=BuildCheriLLVM.get_install_dir(self),
+                           LLVM_SOURCE_DIR=self.get_source_dir(self) / "llvm",
+                           LLVM_EXTERNAL_LIT=self.get_source_dir(self) / "llvm" / "utils" / "lit" / "lit.py",
+                           CLANG_INCLUDE_TESTS=True,)
+        # enable CSA
+        self.add_cmake_options(CLANG_ENABLE_STATIC_ANALYZER=True)
+        super().configure(**kwargs)
 
     @classmethod
     def get_native_install_path(cls, config: CheriConfig):
